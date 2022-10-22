@@ -1,0 +1,194 @@
+---
+title: "MIS 64060 Assignment 2 9-29-2022"
+author: "Antonio Garlisi"
+date: "2022-09-29"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+```{r Import Data and Load Packages}
+library(caret)
+library(ISLR)
+library(dplyr)
+library(class)
+library(gmodels)
+library(FNN)
+
+
+#load the data 
+
+universal.df <- read.csv("C:\\Users\\Andrew Garlisi\\Downloads\\UniversalBank.csv" , header=TRUE, stringsAsFactors=FALSE) 
+```
+
+```{r Partition Data}
+dim(universal.df)              # number of observations and columns  
+
+t(t(names(universal.df)))   # list of the variables (column head) 
+
+#partition the data 
+
+set.seed(1)   
+train.index <- sample(row.names(universal.df), 0.6*dim(universal.df)[1])               # 60 % is in train set 
+
+valid.index <- setdiff(row.names(universal.df), train.index)             # remaining (40 % ) is in validation set 
+
+train.df <- universal.df[train.index, -c(1, 5)]           # remove first and 5th columns (ID and Zip code) 
+
+valid.df <- universal.df[valid.index, -c(1, 5)] 
+
+t(t(names(train.df)))                                       # look at the variables after removing ID and Zip code 
+```
+
+```{r New Customer}
+#new customer  
+
+new.cust <- data.frame(Age = 40,  Experience = 10,   Income = 84,   Family = 2,   CCAvg = 2,  Education = 2, Mortgage = 0,   Securities.Account = 0,   CD.Account = 0,  Online = 1,   CreditCard = 1) 
+
+#new.cust$Education <- as.factor(new.cust$Education) 
+
+new.cust
+```
+
+```{r Normalize Data}
+# normalize the data 
+
+train.norm.df <- train.df[,-8]                        # Personal loan data is in the 8th column 
+
+valid.norm.df <- valid.df[,-8] 
+
+ 
+
+new.cust.norm <- new.cust 
+norm.values <- preProcess(train.df[, -8], method=c("center", "scale")) 
+
+
+train.norm.df <- predict(norm.values, train.df[, -8]) 
+
+valid.norm.df <- predict(norm.values, valid.df[, -8]) 
+
+new.cust.norm <- predict(norm.values, new.cust.norm) 
+```
+
+```{r KNN Classification of Customer}
+
+knn.pred <- knn(train = train.norm.df,
+
+                       test = new.cust.norm,
+
+                       cl = train.df$Personal.Loan,
+                       
+                       k = 1) 
+knn.pred 
+
+```
+
+#Based on the output of 0, we can assume that this customer would belong to the loan not accepted group.
+
+```{r Testing Accuracy for Optimal K}
+ 
+
+library(e1071)
+
+# functions for statistic and probabilistic algorithms like a fuzzy classifier 
+
+# optimal k 
+
+accuracy.df <- data.frame(k = seq(1, 15, 1), overallaccuracy = rep(0, 15)) 
+
+for(i in 1:15) {
+
+  knn.pred <- knn(train = train.norm.df,  
+
+                         test = valid.norm.df,  
+
+                         cl = train.df$Personal.Loan, k = i, prob=TRUE) 
+
+  accuracy.df[i, 2] <- confusionMatrix(knn.pred,as.factor(valid.df$Personal.Loan))$overall[1]  
+}
+
+accuracy.df
+```
+
+#Based on the results of the accuracy texts with different k values, 3 seems to be the best fit at 0.9590 accuracy
+
+```{r Confusion Matrix for Optimal K}
+
+accuracy_k3 <- knn(train = train.norm.df, test = valid.norm.df, cl = train.df$Personal.Loan, k=3, prob=TRUE)
+confusionMatrix(accuracy_k3,as.factor(valid.df$Personal.Loan))
+```
+
+```{r New customer 2}
+#New Customer 2
+
+new.cust2 <- data.frame(Age = 40,  Experience = 10,   Income = 84,   Family = 2,   CCAvg = 2,  Education = 2, Mortgage = 0,   Securities.Account = 0,   CD.Account = 0,  Online = 1,   CreditCard = 1) 
+new.cust2
+```
+
+```{r New customer 2 Classification}
+new.cust2.norm <- new.cust2 
+new.cust2.norm <- predict(norm.values, new.cust2.norm) 
+
+k3pred <- knn(train = train.norm.df,
+
+                       test = new.cust2.norm,
+
+                       cl = train.df$Personal.Loan,
+                       
+                       k = 3) 
+
+k3pred
+```
+
+#Based on the output of 0 when using k of 3, we can assume that this customer would belong to the loan not accepted group.
+
+```{r Repartition the Data into Training, Validation, and Test Sets}
+
+set.seed(1)   
+
+train2.index <- sample(row.names(universal.df), 0.5*dim(universal.df)[1])       
+#50 % is in train set 
+
+valid2.index <- sample(setdiff(row.names(universal.df), train2.index),0.3*dim(universal.df)[1])            
+# 30% is in validation set 
+
+test2.index = setdiff(rownames(universal.df), union(train2.index,valid2.index))
+#remaining 20% is in test set
+
+
+train2.df <- universal.df[train2.index, -c(1, 5)]
+
+valid2.df <- universal.df[valid2.index, -c(1, 5)] 
+
+test2.df <- universal.df[test2.index, -c(1, 5)] 
+
+#Normalize data for new partitions
+
+train2.norm.df <- train2.df[,-8]
+valid2.norm.df <- valid2.df[,-8]
+test2.norm.df <- test2.df[,-8]
+
+
+norm2.values <- preProcess(train2.df[, -8], method=c("center", "scale")) 
+train2.norm.df <- predict(norm2.values, train2.df[, -8]) 
+valid2.norm.df <- predict(norm2.values, valid2.df[, -8]) 
+test2.norm.df <- predict(norm2.values, test2.df[, -8]) 
+```
+
+```{r KNN On New Partitions}
+
+train2knn <- knn(train = train2.norm.df, test = train2.norm.df, cl = train2.df$Personal.Loan, k=3, prob=TRUE)
+confusionMatrix(train2knn,as.factor(train2.df$Personal.Loan))
+```
+
+```{r KNN On New Partitions Continued}
+
+
+```
+
+#When attempting to run KNN on the validation and test sets, I kept getting an error message stating that 'Error in table(data, reference, dnn = dnn, ...) : all arguments must have the same length. Due to not being able to finalize the KNN for the last two sets, I was unable to generate their confusion matrices for comparison.

@@ -1,0 +1,84 @@
+---
+title: "MIS-64060 Assignment 4"
+author: "Antonio Garlisi"
+date: "2022-10-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Load Pharmaceuticals and Install Packages}
+universal.df <- read.csv("C:\\Users\\Andrew Garlisi\\Documents\\Pharmaceuticals.csv" , header=TRUE, stringsAsFactors=FALSE)
+install.packages("factoextra", repos ="http://cran.us.r-project.org")
+library(factoextra)
+install.packages("flexclust",repos = "http://cran.us.r-project.org")
+library(flexclust)
+
+```
+
+```{r Summary Pharmaceuticals}
+summary(universal.df)
+```
+
+```{r a Cluster Data}
+set.seed(123)
+df <- universal.df[,c(3:11)]
+summary(df)
+```
+```{r Cluster Scaling}
+df <- scale(df)
+library(factoextra)
+distance <- get_dist(df)
+fviz_dist(distance)
+```
+
+```{r Cluster Data Elbow}
+library(factoextra)
+fviz_nbclust(df, kmeans, method="wss")
+```
+```{r Cluster Data silhouette}
+library(factoextra)
+fviz_nbclust(df, kmeans, method="silhouette")
+
+```
+#Based on the Elbow and Silhouette methods, the optimal number of clusters is 5
+
+
+```{r Create Clusters with K5}
+k5 <- kmeans(df, centers = 5, nstart = 25)
+```
+```{r a Visualize Clusters K5}
+library(factoextra)
+install.packages("ggsignif", repos = "http://cran.us.r-project.org")
+library(ggsignif)
+install.packages("backports",repos = "http://cran.us.r-project.org")
+library(backports)
+install.packages("rstatix",repos = "http://cran.us.r-project.org")
+library(rstatix)
+
+fviz_cluster(k5, data = df)
+```
+
+```{r b Analyze Cluster Using Numerical Values with Centers}
+k5$centers
+```
+
+#Cluster 1 - Lower Asset_Turnover and Higher Rev_Growth 
+#Cluster 2 - Higher PE_Ratio and Lower Net_Profit_Margin
+#Cluster 3 - Higher Beta with Higher Leverage and Below Average Net_Profit_Margin
+#Cluster 4 - Below Average Market Cap Companies above average REO, ROA, Asset_Turnover, and Net_Profit_Margin
+#Cluster 5 - Higher Market Cap companies with above average ROE, ROA, Asset_Turnover, and Net_Profit_Margin
+
+```{r c Analyze Clusters with Non Numerical Values}
+#There does appear to be some correlation between the Median_Recommendation and the clusters. Cluster 1 has a mix of moderate buy and moderate sell. Cluster 2 has one hold and one moderate buy. Cluster 3 had two holds and one moderate buy. Cluster 4 had four hold with one moderate sell and one strong buy. Cluster 5 with the highest Net_Profit_Margin and Market_Cap were all listed as Hold. There doesn't seem to be a correlation between the locations as each cluster has multiple countries represented. There were only two companies on exchanges outside of the NYSE and they were both in cluster 3 although the third member of that cluster was listed with the NYSE.
+```
+```{r d Name the Clusters}
+#Cluster 1 - Lowest Asset Turnover with Highest Revenue Growth
+#Cluster 2 - High PE Ratio with Lowest Profitability
+#Cluster 3 - Highest Beta and Leverage
+#Cluster 4 - Below Average Market Cap with Above Average Profitability
+#Cluster 5 - High Market Cap and Most Profitable
+```
+

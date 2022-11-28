@@ -1,0 +1,136 @@
+---
+title: "MIS-64060 Assignment 5"
+author: "Antonio Garlisi"
+date: "2022-11-03"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r Load Cereal Data and Install Packages}
+universal.df <- read.csv("C:\\Users\\Andrew Garlisi\\Documents\\Cereals.csv" , header=TRUE, stringsAsFactors=FALSE)
+install.packages("dplyr", repos ="http://cran.us.r-project.org")
+library(dplyr)
+install.packages("stats", repos ="http://cran.us.r-project.org")
+library(stats)
+install.packages("cluster", repos ="http://cran.us.r-project.org")
+library(cluster)
+install.packages("factoextra", repos ="http://cran.us.r-project.org")
+library(factoextra)
+```
+
+```{r Remove NA Cereals}
+universal.df <- na.omit(universal.df)
+
+```
+
+
+```{r Remove Non-Numeric Columns and Scale Data}
+numeric.df <- subset(universal.df, select = -c(2:3))
+rownames(numeric.df) <- numeric.df$name
+numeric.df$name <- NULL
+numeric.df <- scale(numeric.df)
+```
+
+```{r Euclidean Distance and Hierarchical Clustering}
+d <- dist(numeric.df, method = "euclidean")
+hc_single <- agnes(numeric.df, method = "single")
+hc_complete <- agnes(numeric.df, method = "complete")
+hc_average <- agnes(numeric.df, method = "average")
+hc_ward <- agnes(numeric.df, method = "ward")
+
+print(hc_single$ac)
+print(hc_complete$ac)
+print(hc_average$ac)
+print(hc_ward$ac)
+```
+
+#Based on the highest Agglomerative coefficient, it appears that the Ward method is the best
+
+```{r Create Dendrogram for Wards}
+pltree(hc_ward, cex = 0.6, hang = -1, main = "Dendrogram of Ward Agnes")
+
+```
+
+
+```{r Elbow Determine Optimal Number of Clusters}
+fviz_nbclust(numeric.df, kmeans, method="wss")
+
+fviz_nbclust(numeric.df, kmeans, method="silhouette")
+```
+#Elbow method somewhat inconclusive with possible elbow between 6-8
+
+```{r Sihouette Determine Optimal Number of Clusters}
+fviz_nbclust(numeric.df, kmeans, method="silhouette")
+```
+#The Optimal number of clusters was determined to be 8 based on Silhouette
+
+```{r Plot Ward Dendrogram with 8 Clusters}
+hc_ward2 <- hclust(d, method = "ward")
+plot(hc_ward2, cex = 0.6)
+rect.hclust(hc_ward2, k = 8, border = 1:8)
+
+```
+```{r Clusters Analysis}
+clustergroups <- cutree(hc_ward2, k=8)
+table(clustergroups)
+
+```
+```{r Continued Clusters Analysis}
+Temp <- cbind(as.data.frame(cbind(numeric.df,clustergroups)))
+fviz_cluster(list(data=d, cluster=clustergroups))
+```
+
+```{r Continued Clusters Analysis for Healthy Group - Cluster 1}
+HealthyCereal <- numeric.df
+HealthyCereal <- as.data.frame(cbind(HealthyCereal,clustergroups))
+mean(HealthyCereal[HealthyCereal$clustergroups==1,"rating"])
+```
+```{r Continued Clusters Analysis for Healthy Group - Cluster 2}
+mean(HealthyCereal[HealthyCereal$clustergroups==2,"rating"])
+```
+
+```{r Continued Clusters Analysis for Healthy Group - Cluster 3}
+mean(HealthyCereal[HealthyCereal$clustergroups==3,"rating"])
+```
+
+```{r Continued Clusters Analysis for Healthy Group - Cluster 4}
+mean(HealthyCereal[HealthyCereal$clustergroups==4,"rating"])
+```
+
+```{r Continued Clusters Analysis for Healthy Group - Cluster 5}
+mean(HealthyCereal[HealthyCereal$clustergroups==5,"rating"])
+```
+
+```{r Continued Clusters Analysis for Healthy Group - Cluster 6}
+mean(HealthyCereal[HealthyCereal$clustergroups==6,"rating"])
+```
+
+```{r Continued Clusters Analysis for Healthy Group - Cluster 7}
+mean(HealthyCereal[HealthyCereal$clustergroups==7,"rating"])
+```
+
+```{r Continued Clusters Analysis for Healthy Group - Cluster 8}
+mean(HealthyCereal[HealthyCereal$clustergroups==8,"rating"])
+```
+
+#Based on the average health ratings from the clusters, Cluster 1 would be the healthiest option although it only has 3 cereals included. The next healthiest group would be Cluster 7 so the school could consider adding those 9 cereals if they wanted more variety while still including mainly cereals with above average health ratings. It makes sense to normalize the data so that the various nutritional factors don't skew the clustering based on their relative scale (ex: calories has a higher range of values than the other nutritional factors).
+
+
+```{r Partition Data for Cluster Stability}
+
+set.seed(1)
+  
+PartA.index <- sample(row.names(numeric.df), 0.6*dim(numeric.df)[1])              
+
+PartB.index <- setdiff(row.names(numeric.df), PartA.index)              
+
+PartA.df <- numeric.df[PartA.index]       
+
+PartB.df <- numeric.df[PartB.index]
+```
+#I didn't find a method of evaluating clusters stability using partitions that made sense to me in the modules or textbook so I partitioned the data into 60% and 40% partitions but didn't know how to proceed from there.
+

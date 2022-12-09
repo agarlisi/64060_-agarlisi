@@ -1,0 +1,112 @@
+---
+title: "MIS-64060 Final Exam"
+author: "Antonio Garlisi"
+date: "2022-11-28"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r Load Umpire Data and Install Packages}
+universal.df <- read.csv("C:\\Users\\Andrew Garlisi\\Downloads\\mlb-umpire-scorecard.csv" , header=TRUE, stringsAsFactors=FALSE) 
+#Downloaded from https://www.kaggle.com/datasets/mattop/mlb-baseball-umpire-scorecards-2015-2022
+install.packages("dplyr", repos ="http://cran.us.r-project.org")
+library(dplyr)
+install.packages("factoextra", repos ="http://cran.us.r-project.org")
+library(factoextra)
+install.packages("flexclust",repos = "http://cran.us.r-project.org")
+library(flexclust)
+install.packages("ggsignif", repos = "http://cran.us.r-project.org")
+library(ggsignif)
+install.packages("backports",repos = "http://cran.us.r-project.org")
+library(backports)
+install.packages("rstatix",repos = "http://cran.us.r-project.org")
+library(rstatix)
+
+```
+
+```{r Preview Data}
+summary(universal.df)
+```
+
+```{r Clean Up Data}
+Data <-  subset(universal.df, select = -c(1,2,4,5,6,7)) #Remove columns that are not relevant and Convert All Data into Numeric Data
+Data$pitches_called <- as.numeric(Data$pitches_called)
+Data$incorrect_calls <- as.numeric(Data$incorrect_calls)
+Data$expected_incorrect_calls <- as.numeric(Data$expected_incorrect_calls)
+Data$correct_calls <- as.numeric(Data$correct_calls)
+Data$expected_correct_calls <- as.numeric(Data$expected_correct_calls)
+Data$correct_calls_above_expected <- as.numeric(Data$correct_calls_above_expected)
+Data$accuracy <- as.numeric(Data$accuracy)
+Data$expected_accuracy <- as.numeric(Data$expected_accuracy)
+Data$accuracy_above_expected <- as.numeric(Data$accuracy_above_expected)
+Data$consistency <- as.numeric(Data$consistency)
+Data$favor_home <- as.numeric(Data$favor_home)
+Data$total_run_impact <- as.numeric(Data$total_run_impact)
+summary(Data)
+```
+  
+```{r Combine Data By Umpire and Take Averages of Stats}  
+nonaData <- na.omit(Data)
+newdf <- nonaData %>% group_by(umpire) %>% summarise_each(funs(mean))
+head(newdf)
+```
+
+```{r Extracting Relevant Statistics}
+metricsdf <- subset (newdf, select =-c(2,3,4,5,6,8,9))
+#Since the main focus is on umpire performance above or below the acceptable/expected level, the relevant stats are the the correct calls and accuracy compared to those expectations along with overall accuracy, potential bias for home or away team, and impact on runs. All other numbers are factored into those key metrics and we don't need to see the individual entries.
+head(metricsdf)
+```
+
+```{r Normalize the Data}
+rownames(metricsdf) <- metricsdf$umpire
+metricsdf$umpire <- NULL
+normdf <- scale(metricsdf)
+head(normdf)
+```
+```{r Distance}
+distance <- get_dist(normdf)
+fviz_dist(distance)
+```
+
+```{r Elbow Method for Number Cluster}
+fviz_nbclust(normdf, kmeans, method="wss")
+```
+#There appears to be elbows between 2-5 as reasonble numbers of clusters
+```{r Cluster Data silhouette}
+fviz_nbclust(normdf, kmeans, method="silhouette")
+```
+#The silhouette method confirms 2 is the optimal number of clusters. This can be used to define the umpires that are performing well and the umpires that are underperforming. If we wanted to include a few groups in the middle (ie:average performers who may not need extensive training but some guidance), we could include additional clusters.
+
+```{r Cluster K 2}
+k2 <- kmeans(normdf, centers = 2, nstart = 25)
+```
+
+```{r Visualize Clusters K 2}
+fviz_cluster(k2, data = normdf)
+```
+
+```{r Analyze k 2 Clusters Using Numerical Values with Centers}
+k2$centers
+```
+#Cluster 1 is comprised of the umpires with higher performance metrics while cluster 2 is comprised of the umpires with performance issues.
+
+#In order to have a better idea of how to handle assignments for important post season games and offseason training for the umpires, it seems better to break the data down into additional clusters.
+
+```{r Clusters with k 5}
+k5 <- kmeans(normdf, centers = 5, nstart = 25)
+```
+```{r Visualize Clusters K 5}
+fviz_cluster(k5, data = normdf)
+```
+
+```{r Analyze k 5 Clusters Using Numerical Values with Centers}
+k5$centers
+```
+
+#Out of the five clusters, there are four sizable groups and one cluster with an outlier (Cluster 5 comprised of only Anthony Johnson) that was not assigned to another cluster likely due to his Favor Home metric being significantly higher than the others. Based on the summarized data, Cluster 4 is the group of the highest performers, Cluster 1 is performing as expected, cluster 2 is performing below average, and cluster 3 is the group of lowest performance. Based on this information, it would make sense to assign Clusters 4 and 1 to playoff games, primetime national games, and the World Series. Cluster 2 should receive some guidance to improve performance but they may not be making enough errors to warrant drastic measures. Cluster 3 has the worst performance and would benefit from extensive offseason training and possible shadowing of Cluster 4. Cluster 5 is close to being in the middle of most performance metrics outside of favor_home so Anthony Johnson may be able to do a good job with some additional training with an emphasis on resisting being influenced by home crowds.
